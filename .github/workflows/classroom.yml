@@ -1,5 +1,7 @@
 name: Autograding Tests
-'on': {}
+'on':
+- push
+- repository_dispatch
 permissions:
   checks: write
   actions: read
@@ -25,4 +27,4 @@ jobs:
       env:
         TEST_RESULTS: "${{steps.test.outputs.result}}"
       with:
-        runners: test
+        runners: test
