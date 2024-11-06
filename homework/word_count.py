@@ -1,108 +1,163 @@
+"""Taller evaluable"""
+
 # pylint: disable=broad-exception-raised
 
-import os
-import shutil
+import fileinput
 import glob
+import os.path
 from itertools import groupby
+import string
 
 
+#
+# Escriba la función load_input que recive como parámetro un folder y retorna
+# una lista de tuplas donde el primer elemento de cada tupla es el nombre del
+# archivo y el segundo es una línea del archivo. La función convierte a tuplas
+# todas las lineas de cada uno de los archivos. La función es genérica y debe
+# leer todos los archivos de folder entregado como parámetro.
+#
+# Por ejemplo:
+#   [
+#     ('text0'.txt', 'Analytics is the discovery, inter ...'),
+#     ('text0'.txt', 'in data. Especially valuable in ar...').
+#     ...
+#     ('text2.txt'. 'hypotheses.')
+#   ]
+#
 def load_input(input_directory):
-    """
-    Recibe un folder y retorna una lista de tuplas donde el primer elemento
-    de cada tupla es el nombre del archivo y el segundo es una línea del archivo.
-    """
-    result = []
-    for filepath in glob.glob(os.path.join(input_directory, '*.txt')):
-        filename = os.path.basename(filepath)
-        with open(filepath, 'r', encoding='utf-8') as file:
-            for line in file:
-                result.append((filename, line.strip()))
-    return result
+    """Funcion load_input"""
+    sequence = []
+    files = glob.glob(f"{input_directory}/*")
+    with fileinput.input(files=files) as f:
+        for line in f:
+            sequence.append((fileinput.filename(), line))
+    return sequence
 
 
+
+#
+# Escriba la función line_preprocessing que recibe una lista de tuplas de la
+# función anterior y retorna una lista de tuplas (clave, valor). Esta función
+# realiza el preprocesamiento de las líneas de texto,
+#
 def line_preprocessing(sequence):
-    """
-    Recibe una lista de tuplas (archivo, línea) y retorna una lista de tuplas
-    (clave, valor), donde se realiza el preprocesamiento de las líneas de texto.
-    """
-    processed = []
-    for filename, line in sequence:
-        # Procesar eliminando puntuación y llevando a minúsculas
-        words = ''.join([char.lower() if char.isalnum() or char.isspace() else ' ' for char in line]).split()
-        for word in words:
-            processed.append((word, 1))
-    return processed
+    """Line Preprocessing"""
+    sequence = [
+        (key, value.translate(str.maketrans("", "", string.punctuation)).lower().strip().strip())
+        for key, value in sequence
+    ]
+    return sequence
 
 
+#
+# Escriba una función llamada maper que recibe una lista de tuplas de la
+# función anterior y retorna una lista de tuplas (clave, valor). En este caso,
+# la clave es cada palabra y el valor es 1, puesto que se está realizando un
+# conteo.
+#
+#   [
+#     ('Analytics', 1),
+#     ('is', 1),
+#     ...
+#   ]
+#
 def mapper(sequence):
-    """
-    Recibe una lista de tuplas (clave, valor) y retorna una lista de tuplas
-    (clave, 1) para realizar el conteo de palabras.
-    """
-    return [(word, 1) for word, _ in sequence]
+    """Mapper"""
+    # result = []
+    # for _, value in sequence:
+    #     for word in value.split():
+    #         result.append( (word, 1) )  
+    # return result
+    return [(word, 1) for _, value in sequence for word in value.split()]
 
 
+#
+# Escriba la función shuffle_and_sort que recibe la lista de tuplas entregada
+# por el mapper, y retorna una lista con el mismo contenido ordenado por la
+# clave.
+#
+#   [
+#     ('Analytics', 1),
+#     ('Analytics', 1),
+#     ...
+#   ]
+#
 def shuffle_and_sort(sequence):
-    """
-    Recibe la lista de tuplas del mapper y retorna una lista ordenada por clave.
-    """
+    """Shuffle and Sort"""
     return sorted(sequence, key=lambda x: x[0])
 
 
+#
+# Escriba la función reducer, la cual recibe el resultado de shuffle_and_sort y
+# reduce los valores asociados a cada clave sumandolos. Como resultado, por
+# ejemplo, la reducción indica cuantas veces aparece la palabra analytics en el
+# texto.
+#
 def reducer(sequence):
-    """
-    Recibe el resultado de shuffle_and_sort y reduce los valores asociados a
-    cada clave sumándolos.
-    """
-    reduced = []
-    for key, group in groupby(sequence, lambda x: x[0]):
-        count = sum(value for _, value in group)
-        reduced.append((key, count))
-    return reduced
+    """Reducer"""
+    result = {}
+    for key, value in sequence:
+        if key not in result.keys():
+            result[key] = 0
+        result[key] += value
+    return list(result.items())
 
 
-def create_output_directory(output_directory):
-    """
-    Crea un directorio. Si el directorio existe, lo borra y lo crea de nuevo.
-    """
+#
+# Escriba la función create_ouptput_directory que recibe un nombre de
+# directorio y lo crea. Si el directorio existe, lo borra
+#
+def create_ouptput_directory(output_directory):
+    """Create Output Directory"""
     if os.path.exists(output_directory):
-        shutil.rmtree(output_directory)
+        for file in glob.glob(f"{output_directory}/*"):
+            os.remove(file)
+        os.rmdir(output_directory)
     os.makedirs(output_directory)
 
 
+#
+# Escriba la función save_output, la cual almacena en un archivo de texto
+# llamado part-00000 el resultado del reducer. El archivo debe ser guardado en
+# el directorio entregado como parámetro, y que se creo en el paso anterior.
+# Adicionalmente, el archivo debe contener una tupla por línea, donde el primer
+# elemento es la clave y el segundo el valor. Los elementos de la tupla están
+# separados por un tabulador.
+#
 def save_output(output_directory, sequence):
-    """
-    Almacena el resultado del reducer en un archivo de texto llamado part-00000
-    en el directorio dado, donde cada línea contiene una tupla separada por un tabulador.
-    """
-    output_path = os.path.join(output_directory, 'part-00000')
-    with open(output_path, 'w', encoding='utf-8') as file:
+    """Save Output"""
+    with open(f"{output_directory}/part-00000", "w", encoding="utf-8") as f:
         for key, value in sequence:
-            file.write(f"{key}\t{value}\n")
+            f.write(f"{key}\t{value}\n")
+            
+            
 
-
+#
+# La siguiente función crea un archivo llamado _SUCCESS en el directorio
+# entregado como parámetro.
+#
 def create_marker(output_directory):
-    """
-    Crea un archivo llamado _SUCCESS en el directorio dado.
-    """
-    success_path = os.path.join(output_directory, '_SUCCESS')
-    with open(success_path, 'w', encoding='utf-8') as file:
-        file.write('')
+    """Create Marker"""
+    with open(f"{output_directory}/_SUCCESS", "w", encoding="utf-8") as f:
+        f.write("")
 
-
+        
+        
 def run_job(input_directory, output_directory):
-    """
-    Orquesta todas las funciones anteriores en un flujo de trabajo completo.
-    """
-    create_output_directory(output_directory)
-    data = load_input(input_directory)
-    preprocessed_data = line_preprocessing(data)
-    mapped_data = mapper(preprocessed_data)
-    sorted_data = shuffle_and_sort(mapped_data)
-    reduced_data = reducer(sorted_data)
-    save_output(output_directory, reduced_data)
+    """Job"""
+    sequence = load_input(input_directory)
+    sequence = line_preprocessing(sequence)
+    sequence = mapper(sequence)
+    sequence = shuffle_and_sort(sequence)
+    sequence = reducer(sequence)
+    create_ouptput_directory(output_directory)
+    save_output(output_directory, sequence)
     create_marker(output_directory)
 
 
 if __name__ == "__main__":
-    run_job("input", "output")
+    run_job(
+        "files/input",
+        "files/output",
+    )
+  
